@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use clap::Parser;
 
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
@@ -23,6 +24,13 @@ pub enum Game {
     GameOfLife = 3,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
+#[repr(u8)]
+pub enum AddonAnimation {
+    Spiral = 0x00,
+    Splashes = 0x01,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, clap::ValueEnum)]
 pub enum GameOfLifeStartParam {
     CurrentMatrix = 0x00,
@@ -34,10 +42,45 @@ pub enum GameOfLifeStartParam {
     BeaconToadBlinker = 0x06,
 }
 
+#[derive(Debug, Clone)]
+pub struct KeypressArg {
+    pub keycode: u16,
+    pub pressed: bool,
+}
+impl FromStr for KeypressArg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split(',');
+        let keycode = parts.next().ok_or("missing key")?.parse().map_err(|_| "bad key")?;
+        let pressed = parts.next().ok_or("missing bool")?.parse().map_err(|_| "bad bool")?;
+        Ok(KeypressArg { keycode, pressed })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, clap::ValueEnum)]
+pub enum Side {
+    Left,
+    Right,
+}
+
 /// LED Matrix
 #[derive(Parser, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct LedMatrixSubcommand {
+    // addon stuff
+    /// Sends keypresses to the matrix, by keycode.
+    #[arg(long)]
+    pub keypress: Option<KeypressArg>,
+    /// Sets the current addon animation.
+    #[arg(long)]
+    #[clap(value_enum)]
+    pub set_addon_animation: Option<AddonAnimation>,
+    #[clap(long)]
+    pub stop_addon_animation: bool,
+    #[clap(long)]
+    pub set_side: Option<Side>,
+
     /// Set LED max brightness percentage or get, if no value provided
     #[arg(long)]
     pub brightness: Option<Option<u8>>,

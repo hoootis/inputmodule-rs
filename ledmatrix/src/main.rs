@@ -114,7 +114,7 @@ use fl16_inputmodules::animations::*;
 use fl16_inputmodules::fl16::EVT_CALC_PIXEL;
 use fl16_inputmodules::games::pong_animation::*;
 use fl16_inputmodules::games::snake_animation::*;
-use fl16_inputmodules::{games::game_of_life, led_hal as bsp};
+use fl16_inputmodules::{addon, games::game_of_life, led_hal as bsp};
 use is31fl3741::devices::LedMatrix;
 #[cfg(not(feature = "evt"))]
 use is31fl3741::devices::CALC_PIXEL;
@@ -139,13 +139,13 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 // Used to demonstrate writing formatted strings
 use core::fmt::Write;
-use heapless::String;
-
+use fl16_inputmodules::addon::AddonAnimation;
 use fl16_inputmodules::control::*;
 use fl16_inputmodules::games::{pong, snake};
 use fl16_inputmodules::matrix::*;
 use fl16_inputmodules::patterns::*;
 use fl16_inputmodules::serialnum::{device_release, get_serialnum};
+use heapless::{String, Vec};
 
 //                            FRA                - Framwork
 //                               KDE             - C1 LED Matrix
@@ -231,6 +231,12 @@ fn main() -> ! {
     let dip1 = pins.dip1.into_pull_up_input();
 
     let mut state = LedmatrixState {
+        // addon stuff
+        visual_keypresses: Vec::new(),
+        timer: 0,
+        addon_animation: None,
+        side: Side::Left,
+
         grid: percentage(0),
         col_buffer: Grid::default(),
         animate: false,
@@ -360,7 +366,10 @@ fn main() -> ! {
         last_usb_suspended = usb_suspended;
 
         // Go to sleep after the timer has run out
-        if timer.get_counter().ticks() > sleep_timer + SLEEP_TIMEOUT && !state.debug_mode {
+        if timer.get_counter().ticks() > sleep_timer + SLEEP_TIMEOUT
+            && !state.debug_mode
+            && !state.addon_animation.is_some()
+        {
             sleep_reason = assign_sleep_reason(
                 last_sleep_reason,
                 sleep_reason,
@@ -401,7 +410,22 @@ fn main() -> ! {
                     state.grid.0[x].rotate_right(1);
                 }
             }
+
+            // manage visual keypresses
+            for keypress in state.visual_keypresses.iter_mut() {
+                if keypress.alive {
+                    continue;
+                }
+                keypress.life -= 1;
+            }
+            state.visual_keypresses.retain(|kp| kp.life > 0);
+
+            if let Some(addon_animation) = &state.addon_animation {
+                state.grid = addon::draw_addon_animation(&state, addon_animation);
+            }
+
             animation_timer = timer.get_counter().ticks();
+            state.timer += 1;
         }
 
         // Check for new data

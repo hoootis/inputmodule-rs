@@ -1,3 +1,7 @@
+use heapless::pool::Box;
+use heapless::Vec;
+use crate::addon;
+use crate::addon::{AddonAnimation, VisualKeypress};
 use crate::animations::*;
 use crate::control::PwmFreqArg;
 use crate::games::game_of_life::GameOfLifeState;
@@ -24,7 +28,28 @@ impl Grid {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum Side {
+    Left,
+    Right,
+}
+impl Side {
+    pub fn is_left(&self) -> bool {
+        matches!(self, Side::Left)
+    }
+    pub fn is_right(&self) -> bool {
+        matches!(self, Side::Right)
+    }
+}
+
 pub struct LedmatrixState {
+    // addon stuff
+    /// list of keypresses for use in keyboard-reactive patterns. tries to clear elements when their life is zero.
+    pub visual_keypresses: Vec<VisualKeypress, 64>,
+    pub timer: u32,
+    pub addon_animation: Option<AddonAnimation>,
+    pub side: Side,
+
     /// Currently displayed grid
     pub grid: Grid,
     /// Temporary buffer for building a new grid

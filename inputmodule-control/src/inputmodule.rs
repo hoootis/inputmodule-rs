@@ -11,7 +11,7 @@ use serialport::{SerialPort, SerialPortInfo, SerialPortType};
 use crate::b1display::{B1Pattern, Fps, PowerMode};
 use crate::c1minimal::Color;
 use crate::font::{convert_font, convert_symbol};
-use crate::ledmatrix::{Game, GameOfLifeStartParam, Pattern};
+use crate::ledmatrix::{AddonAnimation, Game, GameOfLifeStartParam, KeypressArg, Pattern, Side};
 
 const FWK_MAGIC: &[u8] = &[0x32, 0xAC];
 pub const FRAMEWORK_VID: u16 = 0x32AC;
@@ -24,6 +24,12 @@ type Brightness = u8;
 #[derive(Clone, Copy)]
 #[repr(u8)]
 enum Command {
+    // addon stuff
+    Keypress = 0x30,
+    SetAddonAnimation = 0x31,
+    StopAddonAnimation = 0x32,
+    SetSide = 0x33,
+
     Brightness = 0x00,
     Pattern = 0x01,
     Bootloader = 0x02,
@@ -174,6 +180,17 @@ pub fn serial_commands(args: &crate::ClapCli) {
             for serialdev in &serialdevs {
                 if args.verbose {
                     println!("Selected serialdev: {:?}", serialdev);
+                }
+
+                // addon stuff
+                if let Some(KeypressArg { keycode, pressed }) = ledmatrix_args.keypress {
+                    keypress_cmd(serialdev, keycode, pressed);
+                }
+                if let Some(addon_animation) = ledmatrix_args.set_addon_animation {
+                    set_addon_animation_cmd(serialdev, addon_animation);
+                }
+                if ledmatrix_args.stop_addon_animation {
+                    stop_addon_animation_cmd(serialdev);
                 }
 
                 if ledmatrix_args.bootloader {
@@ -366,6 +383,21 @@ fn get_device_version(serialdev: &str) {
         print!(" (Pre-Release)");
     }
     println!();
+}
+
+// addon stuff
+fn keypress_cmd(serialdev: &str, keycode: u16, pressed: bool) {
+    let keycode_bytes = keycode.to_le_bytes();
+    simple_cmd(serialdev, Command::Keypress, &[keycode_bytes[0], keycode_bytes[1], pressed as u8]);
+}
+fn set_addon_animation_cmd(serialdev: &str, addon_animation: AddonAnimation) {
+    simple_cmd(serialdev, Command::SetAddonAnimation, &[addon_animation as u8])
+}
+fn stop_addon_animation_cmd(serialdev: &str) {
+    simple_cmd(serialdev, Command::StopAddonAnimation, &[0x00]);
+}
+fn set_side_cmd(serialdev: &str, side: Side) {
+    simple_cmd(serialdev, Command::SetSide, &[matches!(side, Side::Right) as u8]);
 }
 
 fn bootloader_cmd(serialdev: &str) {

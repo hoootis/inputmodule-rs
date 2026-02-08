@@ -34,3 +34,4 @@ pub mod minimal_hal;
 
 pub mod control;
 pub mod serialnum;
+pub mod addon;

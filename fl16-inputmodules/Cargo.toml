@@ -8,7 +8,7 @@ crc = "3.0"
 cortex-m.workspace = true
 cortex-m-rt.workspace = true
 embedded-hal.workspace = true
-
+libm = "0.2.16"
 defmt.workspace = true
 defmt-rtt.workspace = true
 

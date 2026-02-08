@@ -40,11 +40,18 @@ use is31fl3741::PwmFreq;
 
 #[cfg(feature = "c1minimal")]
 use smart_leds::{SmartLedsWrite, RGB8};
+use crate::addon::{AddonAnimation, AddonAnimationVals, VisualKeypress};
 
 #[repr(u8)]
 #[derive(num_derive::FromPrimitive)]
 /// All available commands
 pub enum CommandVals {
+    // addon stuff
+    Keypress = 0x30,
+    SetAddonAnimation = 0x31,
+    StopAddonAnimation = 0x32,
+    SetSide = 0x33,
+
     Brightness = 0x00,
     Pattern = 0x01,
     BootloaderReset = 0x02,
@@ -156,6 +163,12 @@ impl From<PwmFreqArg> for PwmFreq {
 
 // TODO: Reduce size for modules that don't require other commands
 pub enum Command {
+    // addon stuff
+    Keypress { keycode: u16, pressed: bool },
+    SetAddonAnimation(AddonAnimationVals),
+    StopAddonAnimation,
+    SetSide(Side),
+
     /// Get current brightness scaling
     GetBrightness,
     /// Set brightness scaling
@@ -291,6 +304,21 @@ pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
         let arg = if count <= 3 { None } else { Some(buf[3]) };
 
         match FromPrimitive::from_u8(command) {
+            // addon stuff
+            Some(CommandVals::Keypress) => {
+                if buf.len() < 6 { return None; }
+                Some(Command::Keypress { keycode: u16::from_le_bytes([buf[3], buf[4]]), pressed: buf[5] == 1 })
+            },
+            Some(CommandVals::SetAddonAnimation) => match arg.and_then(FromPrimitive::from_u8) {
+                Some(val) => Some(Command::SetAddonAnimation(val)),
+                None => None,
+            },
+            Some(CommandVals::StopAddonAnimation) => Some(Command::StopAddonAnimation),
+            Some(CommandVals::SetSide) => match arg {
+                Some(arg) => Some(Command::SetSide(if arg == 0 { Side::Left } else { Side::Right })),
+                None => None,
+            }
+
             Some(CommandVals::Brightness) => Some(if let Some(brightness) = arg {
                 Command::SetBrightness(brightness)
             } else {
@@ -404,6 +432,7 @@ pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
     }
 }
 
+/*
 #[cfg(feature = "b1display")]
 pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
     if count >= 3 && buf[0] == 0x32 && buf[1] == 0xAC {
@@ -484,7 +513,7 @@ pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
     } else {
         None
     }
-}
+}*/
 
 #[cfg(not(any(feature = "ledmatrix", feature = "b1display", feature = "c1minimal")))]
 pub fn parse_module_command(_count: usize, _buf: &[u8]) -> Option<Command> {
@@ -521,6 +550,41 @@ pub fn handle_command(
     use crate::games::game_of_life;
 
     match command {
+        // addon stuff
+        Command::Keypress { keycode, pressed } => {
+            let pos = state.visual_keypresses.iter().position(|k| k.keycode == *keycode);
+            if *pressed {
+                if let Some(pos) = pos {
+                    state.visual_keypresses[pos].life = 100;
+                    state.visual_keypresses[pos].alive = true;
+                }
+                else {
+                    state.visual_keypresses.push(VisualKeypress { life: 25, keycode: *keycode, alive: true }).ok();
+                }
+            }
+            else {
+                if let Some(pos) = pos {
+                    state.visual_keypresses[pos].alive = false;
+                }
+            }
+            None
+        }
+        Command::SetAddonAnimation(val) => {
+            match val {
+                AddonAnimationVals::Spiral => state.addon_animation = Some(AddonAnimation::Spiral),
+                AddonAnimationVals::Splashes => state.addon_animation = Some(AddonAnimation::Splashes),
+            }
+            None
+        }
+        Command::StopAddonAnimation => {
+            state.addon_animation = None;
+            None
+        }
+        Command::SetSide(side) => {
+            state.side = *side;
+            None
+        }
+
         Command::GetBrightness => {
             let mut response: [u8; 32] = [0; 32];
             response[0] = state.brightness;
@@ -538,6 +602,7 @@ pub fn handle_command(
         }
         Command::Pattern(pattern) => {
             //let _ = serial.write("Pattern".as_bytes());
+            state.addon_animation = None;
             match pattern {
                 PatternVals::Gradient => state.grid = gradient(),
                 PatternVals::DoubleGradient => state.grid = double_gradient(),
@@ -639,6 +704,7 @@ pub fn handle_command(
     }
 }
 
+/*
 #[cfg(feature = "b1display")]
 pub fn handle_command<SPI, DC, CS, RST, const COLS: usize, const ROWS: usize>(
     command: &Command,
@@ -805,8 +871,9 @@ where
         }
         _ => handle_generic_command(command),
     }
-}
+}*/
 
+/*
 #[cfg(feature = "c1minimal")]
 pub fn handle_command(
     command: &Command,
@@ -859,8 +926,9 @@ pub fn handle_command(
         // TODO: Make it return something
         _ => handle_generic_command(command),
     }
-}
+}*/
 
+/*
 #[cfg(feature = "c1minimal")]
 pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
     if count >= 3 && buf[0] == 0x32 && buf[1] == 0xAC {
@@ -888,4 +956,4 @@ pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
     } else {
         None
     }
-}
+}*/
