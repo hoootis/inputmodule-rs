@@ -1,6 +1,4 @@
-use heapless::pool::Box;
 use heapless::Vec;
-use crate::addon;
 use crate::addon::{AddonAnimation, VisualKeypress};
 use crate::animations::*;
 use crate::control::PwmFreqArg;

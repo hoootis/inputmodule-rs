@@ -61,9 +61,9 @@ pub fn splashes(state: &LedmatrixState, uv: Vector2, uv_centered: Vector2, time:
         let mut p = uv_centered;
         p.y += rand(keypress.keycode as u32) * 6.0 - 3.0;
         p.x += rand(keypress.keycode.wrapping_add(50) as u32) - 0.5;
-        let len = uv_centered.length();
+        let len = p.length();
 
-        let life = keypress.life as f32 / 25.0;
+        let life = keypress.life as f32 / 20.0;
         let rad = life * 2.0;
 
         ret = ret.max(libm::fabsf(libm::sinf(len * 3.0 - life - (time) * 0.1)) * (rad - len));

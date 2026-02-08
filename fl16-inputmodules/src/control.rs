@@ -555,11 +555,11 @@ pub fn handle_command(
             let pos = state.visual_keypresses.iter().position(|k| k.keycode == *keycode);
             if *pressed {
                 if let Some(pos) = pos {
-                    state.visual_keypresses[pos].life = 100;
+                    state.visual_keypresses[pos].life = 20;
                     state.visual_keypresses[pos].alive = true;
                 }
                 else {
-                    state.visual_keypresses.push(VisualKeypress { life: 25, keycode: *keycode, alive: true }).ok();
+                    state.visual_keypresses.push(VisualKeypress { life: 20, keycode: *keycode, alive: true }).ok();
                 }
             }
             else {
