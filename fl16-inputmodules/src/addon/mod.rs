@@ -78,17 +78,17 @@ pub fn splashes(state: &LedmatrixState, uv: Vector2, uv_centered: Vector2, time:
     let mut ret: f32 = 0.0;
     for keypress in state.visual_keypresses.iter()
     {
-        if (rand(keypress.keycode.wrapping_add(100) as u32) < 0.5) == state.side.is_left() { continue; }
+        if (rand(keypress.keycode.wrapping_add(100)) < 0.5) == state.side.is_left() { continue; }
         let mut p = uv_centered;
-        p.y += rand(keypress.keycode as u32) * 6.0 - 3.0;
-        p.x += rand(keypress.keycode.wrapping_add(50) as u32) - 0.5;
-        let len = p.length_sq();
+        p.y += rand(keypress.keycode) * 6.0 - 3.0;
+        p.x += rand(keypress.keycode.wrapping_add(50)) - 0.5;
+        let len = p.length();
 
-        let life = keypress.life as f32 / 20.0;
-        let rad = life * 2.0;
+        let life = keypress.life as f32 / state.visual_keypress_life as f32;
+        let rad = life * 1.5;
         if len > rad { continue; }
 
-        ret = ret.max(f32::abs(sin(len * 3.0 - life * 10.0 - (time) * 0.1)) * (rad - len));
+        ret = ret.max(f32::abs(sin(len * 2.0 - life * 5.0 - (time) * 0.1)) * (rad - len));
     }
     ret
 }
@@ -106,28 +106,25 @@ pub fn sin(x: f32) -> f32 {
     let sign: u32 = v & 0x80000000;
     v &= 0x7FFFFFFF;
 
-    let qpprox = FOUROVERPI * x - FOUROVERPISQ * x * f32::from_bits(v);
+    let approx = FOUROVERPI * x - FOUROVERPISQ * x * f32::from_bits(v);
 
     p |= sign;
 
-    qpprox * (Q + f32::from_bits(p) * qpprox)
+    approx * (Q + f32::from_bits(p) * approx)
 }
 
-pub fn rand(seed: u32) -> f32
-{
-    let b = 32;
-    let f = f32::MANTISSA_DIGITS - 1;
-    f32::from_bits((1 << (b - 2)) - (1 << f) + (gen_u64(seed as u64) as u32 >> (b - f))) - 1.0
-}
+#[inline(always)]
+pub fn rand(seed: u16) -> f32 {
+    let mut x = seed as u32;
+    x = x.wrapping_mul(0x9E37_79B9);
 
-fn gen_u64(seed: u64) -> u64 {
-    // ripped from fastrand
-    // Constants for WyRand taken from: https://github.com/wangyi-fudan/wyhash/blob/master/wyhash.h#L151
-    // Updated for the final v4.2 implementation with improved constants for better entropy output.
-    const WY_CONST_0: u64 = 0x2d35_8dcc_aa6c_78a5;
-    const WY_CONST_1: u64 = 0x8bb8_4b93_962e_acc9;
+    // I LOVE XORSHIFT
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x85EB_CA6B);
+    x ^= x >> 13;
+    x = x.wrapping_mul(0xC2B2_AE35);
+    x ^= x >> 16;
 
-    let s = seed.wrapping_add(WY_CONST_0);
-    let t = u128::from(s) * u128::from(s ^ WY_CONST_1);
-    (t as u64) ^ (t >> 64) as u64
+    let bits = (x >> 9) | 0x3F80_0000;
+    f32::from_bits(bits) - 1.0
 }

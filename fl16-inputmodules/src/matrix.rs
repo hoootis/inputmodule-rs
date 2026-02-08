@@ -44,6 +44,7 @@ pub struct LedmatrixState {
     // addon stuff
     /// list of keypresses for use in keyboard-reactive patterns. tries to clear elements when their life is zero.
     pub visual_keypresses: Vec<VisualKeypress, 64>,
+    pub visual_keypress_life: u8,
     pub timer: u32,
     pub addon_animation: Option<AddonAnimation>,
     pub side: Side,

@@ -241,6 +241,7 @@ fn main() -> ! {
     let mut state = LedmatrixState {
         // addon stuff
         visual_keypresses: Vec::new(),
+        visual_keypress_life: 10,
         timer: 0,
         addon_animation: None,
         side: Side::Left,
