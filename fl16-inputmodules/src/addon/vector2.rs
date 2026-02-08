@@ -32,14 +32,22 @@ impl Mul<f32> for Vector2
 }
 impl Vector2
 {
-    pub fn new(x: f32, y: f32) -> Self
+    #[inline(always)]
+    pub const fn new(x: f32, y: f32) -> Self
     {
         Self { x, y }
     }
+    #[inline(always)]
+    pub const fn default() -> Self { Self::new(0.0, 0.0) }
 
     pub fn length(&self) -> f32
     {
         libm::sqrtf(self.x * self.x + self.y * self.y)
+    }
+
+    pub fn length_sq(&self) -> f32
+    {
+        self.x * self.x + self.y * self.y
     }
 
     pub fn normalized(&self) -> Self
