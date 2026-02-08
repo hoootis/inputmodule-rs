@@ -32,6 +32,9 @@ pub mod lcd_hal;
 #[cfg(all(feature = "c1minimal", not(feature = "qtpy")))]
 pub mod minimal_hal;
 
+#[cfg(feature = "qtpy")]
+pub mod qtpy_hal;
+
 pub mod control;
 pub mod serialnum;
 pub mod addon;
