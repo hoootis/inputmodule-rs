@@ -40,6 +40,7 @@ use is31fl3741::PwmFreq;
 
 #[cfg(feature = "c1minimal")]
 use smart_leds::{SmartLedsWrite, RGB8};
+use crate::addon;
 use crate::addon::{AddonAnimation, AddonAnimationVals, VisualKeypress};
 
 #[repr(u8)]
@@ -164,7 +165,7 @@ impl From<PwmFreqArg> for PwmFreq {
 // TODO: Reduce size for modules that don't require other commands
 pub enum Command {
     // addon stuff
-    Keypress { keycode: u16, pressed: bool },
+    Keypress { keycode: u32, pressed: bool },
     SetAddonAnimation(AddonAnimationVals),
     StopAddonAnimation,
     SetSide(Side),
@@ -306,8 +307,8 @@ pub fn parse_module_command(count: usize, buf: &[u8]) -> Option<Command> {
         match FromPrimitive::from_u8(command) {
             // addon stuff
             Some(CommandVals::Keypress) => {
-                if buf.len() < 6 { return None; }
-                Some(Command::Keypress { keycode: u16::from_le_bytes([buf[3], buf[4]]), pressed: buf[5] == 1 })
+                if buf.len() < 8 { return None; }
+                Some(Command::Keypress { keycode: u32::from_le_bytes([buf[3], buf[4], buf[5], buf[6]]), pressed: buf[7] == 1 })
             },
             Some(CommandVals::SetAddonAnimation) => match arg.and_then(FromPrimitive::from_u8) {
                 Some(val) => Some(Command::SetAddonAnimation(val)),
@@ -559,7 +560,15 @@ pub fn handle_command(
                     state.visual_keypresses[pos].alive = true;
                 }
                 else {
-                    state.visual_keypresses.push(VisualKeypress { life: state.visual_keypress_life, keycode: *keycode, alive: true }).ok();
+                    let keycode = *keycode;
+                    state.visual_keypresses.push(VisualKeypress {
+                        life: state.visual_keypress_life,
+                        keycode,
+                        alive: true,
+                        side: if addon::rand(keycode.wrapping_add(100)) > 0.5 { Side::Left } else { Side::Right },
+                        rand0: addon::rand(keycode),
+                        rand1: addon::rand(keycode.wrapping_add(50))
+                    }).ok();
                 }
             }
             else {
@@ -573,6 +582,7 @@ pub fn handle_command(
             match val {
                 AddonAnimationVals::Spiral => state.addon_animation = Some(AddonAnimation::Spiral),
                 AddonAnimationVals::Splashes => state.addon_animation = Some(AddonAnimation::Splashes),
+                AddonAnimationVals::Helix => state.addon_animation = Some(AddonAnimation::Helix),
             }
             None
         }

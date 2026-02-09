@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use core::ops::{Div, Mul};
+use core::ops::{Div, Mul, Sub};
 
 #[derive(Copy, Clone)]
 pub struct Vector2
@@ -22,12 +22,13 @@ impl Mul<f32> for &Vector2
         Vector2::new(self.x * rhs, self.y * rhs)
     }
 }
-impl Mul<f32> for Vector2
+impl Sub<f32> for Vector2
 {
     type Output = Vector2;
-    fn mul(self, rhs: f32) -> Self::Output
+
+    fn sub(self, rhs: f32) -> Self::Output
     {
-        Vector2::new(self.x * rhs, self.y * rhs)
+        Vector2::new(self.x - rhs, self.y - rhs)
     }
 }
 impl Vector2

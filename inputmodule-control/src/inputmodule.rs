@@ -386,7 +386,7 @@ fn get_device_version(serialdev: &str) {
 }
 
 // addon stuff
-fn keypress_cmd(serialdev: &str, keycode: u16, pressed: bool) {
+fn keypress_cmd(serialdev: &str, keycode: u32, pressed: bool) {
     let keycode_bytes = keycode.to_le_bytes();
     simple_cmd(serialdev, Command::Keypress, &[keycode_bytes[0], keycode_bytes[1], pressed as u8]);
 }

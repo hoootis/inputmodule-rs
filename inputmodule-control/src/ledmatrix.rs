@@ -30,6 +30,7 @@ pub enum Game {
 pub enum AddonAnimation {
     Spiral = 0x00,
     Splashes = 0x01,
+    Helix = 0x02,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, clap::ValueEnum)]
@@ -45,7 +46,7 @@ pub enum GameOfLifeStartParam {
 
 #[derive(Debug, Clone)]
 pub struct KeypressArg {
-    pub keycode: u16,
+    pub keycode: u32,
     pub pressed: bool,
 }
 impl FromStr for KeypressArg {
