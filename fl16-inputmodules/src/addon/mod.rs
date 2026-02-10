@@ -1,6 +1,7 @@
 use crate::addon::vector2::Vector2;
 use crate::matrix::{Grid, LedmatrixState, Side, HEIGHT, WIDTH};
 use core::f32::consts::PI;
+use num_traits::clamp;
 
 pub mod vector2;
 
@@ -75,7 +76,7 @@ pub fn spiral(state: &LedmatrixState, uv: Vector2, uv_centered: Vector2, time: f
     const RAD: f32 = 5.0;
     let len = uv_centered.length();
     let angle = libm::atan2f(uv_centered.y, uv_centered.x);
-    libm::sinf(angle + len * RAD - time * 0.1)
+    sin_full(angle + len * RAD - time * 0.1)
 }
 
 pub fn splashes(state: &LedmatrixState, uv: Vector2, uv_centered: Vector2, time: f32) -> f32 {
@@ -87,12 +88,18 @@ pub fn splashes(state: &LedmatrixState, uv: Vector2, uv_centered: Vector2, time:
         p.y += keypress.rand0 * 6.0 - 3.0;
         p.x += keypress.rand1 - 0.5;
         let len = p.length();
+        if len > 1.5 { continue; }
 
         let life = keypress.life as f32 / state.visual_keypress_life as f32;
-        let rad = life * 1.5;
-        if len > rad { continue; }
+        const FREQ: f32 = 5.0;
 
-        ret = ret.max(f32::abs(sin(len * 2.0 - life * 5.0 - (time) * 0.1)) * (rad - len));
+        let angle = libm::atan2f(p.y, p.x);
+        let phenotype = 2.0;
+        let rad = life * 1.5 - f32::abs(sin_full(angle * phenotype)) * 1.0;
+        let mut d = f32::abs(sin_full(len * FREQ - time)) + f32::clamp(1.0 - len, 0.0, 1.0);
+        d *= rad - len;
+
+        ret = f32::max(ret, d);
     }
     ret
 }
@@ -103,23 +110,38 @@ pub fn helix(state: &LedmatrixState, mut uv: Vector2, uv_centered: Vector2, time
 
     const width: f32 = 1.5 / WIDTH as f32;
     const padding: f32 = 0.0;
-    const freq: f32 = 5.0;
+    const freq: f32 = 4.0;
 
     let time = time * 0.1;
     let mut shade_coeff = f32::abs(uv.x) + width * 2.0;
     shade_coeff = shade_coeff * shade_coeff * shade_coeff;
-    let left_offset = libm::sinf((uv.y * freq + time) + PI / 2.0) * (1.0 - width - padding);
+    let left_offset = sin_full((uv.y * freq + time) + PI / 2.0) * (1.0 - width - padding);
     let left_shaded = left_offset > 0.0;
 
-    let mut left = uv.x + libm::sinf(uv.y * freq + time) * (1.0 - width - padding);
+    let mut left = uv.x + sin_full(uv.y * freq + time) * (1.0 - width - padding);
     left = smoothstep(f32::abs(left), width * 1.5, width);
     left *= if left_shaded { shade_coeff } else { 1.0 };
 
-    let mut right = uv.x + libm::sinf(uv.y * freq + time + PI) * (1.0 - width - padding);
+    let mut right = uv.x + sin_full(uv.y * freq + time + PI) * (1.0 - width - padding);
     right = smoothstep(f32::abs(right), width * 1.5, width);
     right *= if left_shaded { 1.0 } else { shade_coeff };
 
-    f32::max(left, right)
+    let mut bar = f32::abs(sin_full((uv.y * freq + time) * 8.0));
+    let mut bar_mask = sin_full(uv.x + PI / 2.0) - 0.5;
+    let mut bar_mask_mul = f32::abs(sin_full(uv.y * freq + time)) * 0.8;
+    bar_mask_mul *= bar_mask_mul;
+    bar_mask -= (1.0 - bar_mask_mul) * 0.5;
+    bar = step(0.8, bar);
+    bar_mask = step(0.0, bar_mask);
+    bar *= bar_mask;
+    bar *= lerp(shade_coeff, 1.0, (1.0 - (1.0 - bar_mask_mul) * (1.0 - bar_mask_mul)) * bar_mask_mul);
+
+    f32::max(f32::max(left, right), bar)
+}
+
+pub const fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    let t = f32::clamp(t, 0.0, 1.0);
+    a + (b - a) * t
 }
 
 pub const fn step(x: f32, edge: f32) -> f32 {
@@ -133,7 +155,6 @@ pub const fn smoothstep(x: f32, edge0: f32, edge1: f32) -> f32 {
 
 #[inline]
 pub const fn sin(x: f32) -> f32 {
-    let x = x % (PI * 2.0);
     const FOUROVERPI: f32 = 1.2732395447351627;
     const FOUROVERPISQ: f32 = 0.40528473456935109;
     const Q: f32 = 0.77633023248007499;
@@ -149,6 +170,16 @@ pub const fn sin(x: f32) -> f32 {
     p |= sign;
 
     approx * (Q + f32::from_bits(p) * approx)
+}
+
+#[inline]
+pub fn sin_full(x: f32) -> f32 {
+    const TWOPI: f32 = 6.2831853071795865;
+    const INVTWOPI: f32 = 0.15915494309189534;
+
+    let k: i32 = (x * INVTWOPI) as i32;
+    let half = if x < 0.0_f32 { -0.5_f32 } else { 0.5_f32 };
+    sin((half + (k as f32)) * TWOPI - x)
 }
 
 #[inline(always)]
